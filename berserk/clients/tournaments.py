@@ -31,7 +31,7 @@ class Tournaments(FmtClient):
         path = f"/api/tournament/{tournament_id}?page={page}"
         return self._r.get(path, converter=models.Tournament.convert)
 
-    def join(
+    def join_arena(
         self,
         tournament_id: str,
         password: str | None = None,
@@ -81,22 +81,6 @@ class Tournaments(FmtClient):
         path = f"/api/tournament/team-battle/{tournament_id}"
         params = {"teams": team_ids, "nbLeaders": team_leader_count_per_team}
         return self._r.post(path=path, params=params)
-
-    def terminate(self, tournament_id: str):
-        """Terminate a tournament.
-
-        :param tournament_id: tournament ID
-        """
-        path = f"/api/tournament/{tournament_id}/terminate"
-        return self._r.post(path)
-
-    def withdraw(self, tournament_id: str):
-        """Leave a future tournament, or take a break on an ongoing tournament.
-
-        :param tournament_id: tournament ID
-        """
-        path = f"/api/tournament/{tournament_id}/withdraw"
-        return self._r.post(path)
 
     def create_arena(
         self,
@@ -391,3 +375,19 @@ class Tournaments(FmtClient):
         """
         path = f"/api/user/{username}/tournament/created"
         yield from self._r.get(path, stream=True)
+
+    def terminate_arena(self, tournament_id: str):
+        """Terminate a tournament.
+
+        :param tournament_id: tournament ID
+        """
+        path = f"/api/tournament/{tournament_id}/terminate"
+        return self._r.post(path)
+
+    def withdraw_arena(self, tournament_id: str):
+        """Leave a future tournament, or take a break on an ongoing tournament.
+
+        :param tournament_id: tournament ID
+        """
+        path = f"/api/tournament/{tournament_id}/withdraw"
+        return self._r.post(path)
