@@ -21,7 +21,7 @@ class Tournaments(FmtClient):
             self._r.get(path, converter=models.Tournament.convert_values),
         )
 
-    def get_tournament(self, tournament_id: str, page: int = 1):
+    def get_tournament_arena(self, tournament_id: str, page: int = 1):
         """Get information about an Arena tournament.
 
         :param tournament_id: tournament ID
@@ -29,6 +29,15 @@ class Tournaments(FmtClient):
         :return: tournament information
         """
         path = f"/api/tournament/{tournament_id}?page={page}"
+        return self._r.get(path, converter=models.Tournament.convert)
+
+    def get_tournament_swiss(self, tournament_id: str):
+        """Get information about a tournament.
+
+        :param tournament_id: tournament ID
+        :return: tournament information
+        """
+        path = f"/api/swiss/{tournament_id}"
         return self._r.get(path, converter=models.Tournament.convert)
 
     def join_arena(
@@ -56,6 +65,23 @@ class Tournaments(FmtClient):
             "pairMeAsap": should_pair_immediately,
         }
         self._r.post(path=path, params=params, converter=models.Tournament.convert)
+
+    def join_swiss(
+        self,
+        tournament_id: str,
+        password: str | None = None,
+    ):
+        """Join a tournament.
+
+        :param tournament_id: tournament ID
+        :param password: tournament password
+        :return: tournament information
+        """
+        path = f"/api/swiss/{tournament_id}/join"
+        payload = {"password": password}
+        return self._r.post(
+            path=path, payload=payload, converter=models.Tournament.convert
+        )
 
     def get_team_standings(self, tournament_id: str) -> Dict[str, Any]:
         """Get team standing of a team battle tournament, with their respective top players.
@@ -299,6 +325,15 @@ class Tournaments(FmtClient):
                 converter=models.Game.convert,
             )
 
+    def export_trf(self, tournament_id: str):
+        """Download a tournament in the Tournament Report File format, the FIDE standard.
+
+        :param tournament_id: tournament ID
+        :return: TRF representation of tournament
+        """
+        path = f"/swiss/{tournament_id}/.trf"
+        return self._r.get(path)
+
     def tournaments_by_user(
         self, username: str, nb: int | None = None
     ) -> List[Dict[str, Any]]:
@@ -351,8 +386,25 @@ class Tournaments(FmtClient):
             path, params=params, fmt=NDJSON_LIST, converter=models.Game.convert
         )
 
-    def stream_results(
-        self, id: str, limit: int | None = None
+    def schedule_next_round(
+        self, tournament_id: str, start_timestamp_milliseconds: int
+    ) -> None:
+        """Manually schedule the next round date and time of a Swiss tournament.
+
+        This sets the roundInterval field to 99999999, i.e. manual scheduling.
+
+        All further rounds will need to be manually scheduled, unless the roundInterval field is changed back to
+        automatic scheduling.
+
+        :param tournament_id: tournament ID
+        :param start_timestamp_milliseconds: timestamp in milliseconds to start the next round at a given date and time
+        """
+        path = f"/api/swiss/{tournament_id}/schedule-next-round"
+        payload = {"date": start_timestamp_milliseconds}
+        return self._r.post(path=path, payload=payload)
+
+    def stream_results_arena(
+        self, tournament_id: str, limit: int | None = None
     ) -> Iterator[Dict[str, Any]]:
         """Stream the results of a tournament.
 
@@ -360,11 +412,28 @@ class Tournaments(FmtClient):
         rank order. Note that results for ongoing tournaments can be inconsistent due to
         ranking changes.
 
-        :param id: tournament ID
+        :param tournament_id: tournament ID
         :param limit: maximum number of results to stream
         :return: iterator over the results
         """
-        path = f"/api/tournament/{id}/results"
+        path = f"/api/tournament/{tournament_id}/results"
+        params = {"nb": limit}
+        yield from self._r.get(path, params=params, stream=True)
+
+    def stream_results_swiss(
+        self, tournament_id: str, limit: int | None = None
+    ) -> Iterator[Dict[str, Any]]:
+        """Stream the results of a tournament.
+
+        Results are the players of a tournament with their scores and performance in
+        rank order. Note that results for ongoing tournaments can be inconsistent due to
+        ranking changes.
+
+        :param tournament_id: tournament ID
+        :param limit: maximum number of results to stream
+        :return: iterator over the results
+        """
+        path = f"/api/swiss/{tournament_id}/results"
         params = {"nb": limit}
         yield from self._r.get(path, params=params, stream=True)
 
@@ -385,10 +454,180 @@ class Tournaments(FmtClient):
         path = f"/api/tournament/{tournament_id}/terminate"
         self._r.post(path)
 
+    def terminate_swiss(self, tournament_id: str) -> None:
+        """Terminate a tournament.
+
+        :param tournament_id: tournament ID
+        """
+        path = f"/api/swiss/{tournament_id}/terminate"
+        self._r.post(path)
+
+    def update_arena(
+        self,
+        tournament_id: str,
+        initial_clock_time_minutes: float,
+        increment_clock_time_seconds: int,
+        duration_minutes: int,
+        name: str | None = None,
+        wait_minutes: int | None = None,
+        start_timestamp_milliseconds: int | None = None,
+        variant: str | None = None,
+        rated: bool = True,
+        position: str | None = None,
+        berserkable: bool = True,
+        streakable: bool = True,
+        has_chat: bool = True,
+        description: str | None = None,
+        password: str | None = None,
+        min_rating: int | None = None,
+        max_rating: int | None = None,
+        min_rated_games_count: int | None = None,
+        allowed_usernames: str | None = None,
+    ) -> Dict[str, Any]:
+        """Updates a tournament.
+
+        Be mindful not to make important changes to ongoing tournaments. Can be used to update a team battle.
+
+        .. note::
+
+            ``wait_minutes`` is always relative to now and is overridden by
+            ``start_time``.
+
+        .. note::
+
+            If ``name`` is left blank then one is automatically created.
+
+        :param tournament_id: tournament ID
+        :param initial_clock_time_minutes: initial clock time in minutes
+        :param increment_clock_time_seconds: clock increment in seconds
+        :param duration_minutes: length of the tournament in minutes
+        :param name: tournament name
+        :param wait_minutes: future start time in minutes
+        :param start_timestamp_milliseconds: when to start the tournament (timestamp in milliseconds)
+        :param variant: variant to use if other than standard
+        :param rated: whether the game affects player ratings
+        :param position: custom initial position in FEN
+        :param berserkable: whether players can use berserk
+        :param streakable: whether players get streaks
+        :param has_chat: whether players can discuss in a chat
+        :param description: anything you want to tell players about the tournament
+        :param password: password
+        :param min_rating: minimum rating to join
+        :param max_rating: maximum rating to join
+        :param min_rated_games_count: min number of rated games required
+        :param allowed_usernames: predefined usernames that are allowed to join, separated by commas
+        :return: created tournament info
+        """
+        path = f"/api/tournament/{tournament_id}"
+        payload = {
+            "name": name,
+            "clockTime": initial_clock_time_minutes,
+            "clockIncrement": increment_clock_time_seconds,
+            "minutes": duration_minutes,
+            "waitMinutes": wait_minutes,
+            "startDate": start_timestamp_milliseconds,
+            "variant": variant,
+            "rated": rated,
+            "position": position,
+            "berserkable": berserkable,
+            "streakable": streakable,
+            "hasChat": has_chat,
+            "description": description,
+            "password": password,
+            "conditions.minRating.rating": min_rating,
+            "conditions.maxRating.rating": max_rating,
+            "conditions.nbRatedGame.nb": min_rated_games_count,
+            "conditions.allowList": allowed_usernames,
+        }
+        return self._r.post(path, json=payload, converter=models.Tournament.convert)
+
+    def update_swiss(
+        self,
+        tournament_id: str,
+        initial_clock_time_minutes: float,
+        increment_clock_time_seconds: int,
+        max_rounds: int,
+        name: str | None = None,
+        start_timestamp_milliseconds: int | None = None,
+        round_interval: int | None = None,
+        variant: str | None = None,
+        description: str | None = None,
+        rated: bool = True,
+        password: str | None = None,
+        forbidden_pairings: str | None = None,
+        manual_pairings: str | None = None,
+        chat_read_write_permissions: int | None = None,
+        min_rating: int | None = None,
+        max_rating: int | None = None,
+        min_rated_games_count: int | None = None,
+        allowed_usernames: str | None = None,
+    ) -> Dict[str, Any]:
+        """Updates a tournament.
+
+        Be mindful not to make important changes to ongoing tournaments.
+
+        .. note::
+
+            For chat_read_write_permissions, 0 = No one, 10 = Only team leaders, 20 = Only team members, 30 = All players
+
+        .. note::
+
+            If ``name`` is left blank then one is automatically created.
+
+        :param tournament_id: tournament ID
+        :param initial_clock_time_minutes: initial clock time in minutes
+        :param increment_clock_time_seconds: clock increment in seconds
+        :param max_rounds: maximum number of rounds to play
+        :param name: tournament name
+        :param start_timestamp_milliseconds: when to start the tournament (timestamp in milliseconds)
+        :param round_interval: number of seconds to wait between each round
+        :param variant: variant to use if other than standard
+        :param description: anything you want to tell players about the tournament
+        :param rated: whether the game affects player ratings
+        :param password: password
+        :param forbidden_pairings: usernames of players that must not play together, two per line, separated by a space
+        :param manual_pairings: manual pairings for the next round, two usernames per line, separated by a space
+        :param chat_read_write_permissions: who can read and write in the chat
+        :param min_rating: minimum rating to join
+        :param max_rating: maximum rating to join
+        :param min_rated_games_count: min number of rated games required
+        :param allowed_usernames: predefined usernames that are allowed to join, separated by commas
+        :return: created tournament info
+        """
+        path = f"/api/swiss/{tournament_id}/edit"
+        payload = {
+            "name": name,
+            "clock.limit": initial_clock_time_minutes,
+            "clock.increment": increment_clock_time_seconds,
+            "nbRounds": max_rounds,
+            "startDate": start_timestamp_milliseconds,
+            "roundInterval": round_interval,
+            "variant": variant,
+            "description": description,
+            "rated": rated,
+            "password": password,
+            "forbiddenPairings": forbidden_pairings,
+            "manualPairings": manual_pairings,
+            "chatFor": chat_read_write_permissions,
+            "conditions.minRating.rating": min_rating,
+            "conditions.maxRating.rating": max_rating,
+            "conditions.nbRatedGame.nb": min_rated_games_count,
+            "conditions.allowList": allowed_usernames,
+        }
+        return self._r.post(path, json=payload, converter=models.Tournament.convert)
+
     def withdraw_arena(self, tournament_id: str) -> None:
         """Leave an upcoming Arena tournament, or take a break on an ongoing Arena tournament.
 
         :param tournament_id: tournament ID
         """
         path = f"/api/tournament/{tournament_id}/withdraw"
+        self._r.post(path)
+
+    def withdraw_swiss(self, tournament_id: str) -> None:
+        """Leave an upcoming tournament, or take a break on an ongoing tournament.
+
+        :param tournament_id: tournament ID
+        """
+        path = f"/api/swiss/{tournament_id}/withdraw"
         self._r.post(path)

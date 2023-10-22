@@ -175,21 +175,30 @@ Most of the API is available:
     client.teams.message_all
 
     client.tournaments.get
-    client.tournaments.get_tournament
+    client.tournaments.get_tournament_arena
+    client.tournaments.get_tournament_swiss
     client.tournaments.get_team_standings
     client.tournaments.update_team_battle
     client.tournaments.create_arena
     client.tournaments.create_swiss
     client.tournaments.export_arena_games
     client.tournaments.export_swiss_games
+    client.tournaments.export_trf
     client.tournaments.join_arena
+    client.tournaments.join_swiss
     client.tournaments.arena_by_team
     client.tournaments.swiss_by_team
     client.tournaments.tournaments_by_user
-    client.tournaments.stream_results
+    client.tournaments.schedule_next_round
+    client.tournaments.stream_results_arena
+    client.tournaments.stream_results_swiss
     client.tournaments.stream_by_creator
     client.tournaments.terminate_arena
+    client.tournaments.terminate_swiss
+    client.tournaments.update_arena
+    client.tournaments.update_swiss
     client.tournaments.withdraw_arena
+    client.tournaments.withdraw_swiss
 
     client.tv.get_current_games
     client.tv.stream_current_game
