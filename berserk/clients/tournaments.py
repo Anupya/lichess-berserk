@@ -31,7 +31,7 @@ class Tournaments(FmtClient):
         path = f"/api/tournament/{tournament_id}?page={page}"
         return self._r.get(path, converter=models.Tournament.convert)
 
-    def join_tournament(
+    def join(
         self,
         tournament_id: str,
         password: str | None = None,
@@ -56,7 +56,7 @@ class Tournaments(FmtClient):
             path=path, params=params, converter=models.Tournament.convert
         )
 
-    def get_tournament_team_standings(self, tournament_id: str):
+    def get_team_standings(self, tournament_id: str):
         """Get team standing of a team battle tournament, with their respective top players.
 
         :param tournament_id: tournament ID
@@ -82,7 +82,7 @@ class Tournaments(FmtClient):
         params = {"teams": team_ids, "nbLeaders": team_leader_count_per_team}
         return self._r.post(path=path, params=params)
 
-    def terminate_tournament(self, tournament_id: str):
+    def terminate(self, tournament_id: str):
         """Terminate a tournament.
 
         :param tournament_id: tournament ID
@@ -90,7 +90,7 @@ class Tournaments(FmtClient):
         path = f"/api/tournament/{tournament_id}/terminate"
         return self._r.post(path)
 
-    def withdraw_tournament(self, tournament_id: str):
+    def withdraw(self, tournament_id: str):
         """Leave a future tournament, or take a break on an ongoing tournament.
 
         :param tournament_id: tournament ID
