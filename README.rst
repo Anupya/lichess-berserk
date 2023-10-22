@@ -172,6 +172,7 @@ Most of the API is available:
     client.teams.teams_of_player
     client.teams.get_popular
     client.teams.search
+    client.teams.message_all
 
     client.tournaments.get
     client.tournaments.get_tournament
