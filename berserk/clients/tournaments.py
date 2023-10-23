@@ -22,7 +22,7 @@ class Tournaments(FmtClient):
         )
 
     def get_tournament(self, tournament_id: str, page: int = 1):
-        """Get information about a tournament.
+        """Get information about an Arena tournament.
 
         :param tournament_id: tournament ID
         :param page: the page number of the player standings to view
@@ -378,7 +378,7 @@ class Tournaments(FmtClient):
         yield from self._r.get(path, stream=True)
 
     def terminate_arena(self, tournament_id: str) -> None:
-        """Terminate a tournament.
+        """Terminate an Arena tournament.
 
         :param tournament_id: tournament ID
         """
@@ -386,7 +386,7 @@ class Tournaments(FmtClient):
         self._r.post(path)
 
     def withdraw_arena(self, tournament_id: str) -> None:
-        """Leave an upcoming tournament, or take a break on an ongoing tournament.
+        """Leave an upcoming Arena tournament, or take a break on an ongoing Arena tournament.
 
         :param tournament_id: tournament ID
         """
